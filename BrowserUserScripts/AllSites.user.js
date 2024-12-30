@@ -120,10 +120,11 @@
   };
 
   const addControls = (element) => {
-    if (element.parentNode?.classList?.contains('media-controls-wrapper')) return;
+    if (element.parentNode?.classList?.contains("media-controls-wrapper"))
+      return;
 
     const wrapper = document.createElement("div");
-    wrapper.classList.add('media-controls-wrapper');
+    wrapper.classList.add("media-controls-wrapper");
     wrapper.style.position = "relative";
     wrapper.style.display = "inline-block";
 
@@ -142,38 +143,39 @@
     const playPause = document.createElement("button");
     playPause.textContent = "⏸️";
     playPause.style.cursor = "pointer";
-    
+
     // For animated images (GIF/WebP)
     if (element.tagName === "IMG") {
-        let isPaused = false;
-        element.style.animationPlayState = 'running';
-        
-        playPause.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            isPaused = !isPaused;
-            element.style.animationPlayState = isPaused ? 'paused' : 'running';
-            playPause.textContent = isPaused ? "▶️" : "⏸️";
-        };
+      let isPaused = false;
+      element.style.animationPlayState = "running";
+
+      playPause.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isPaused = !isPaused;
+        element.style.animationPlayState = isPaused ? "paused" : "running";
+        playPause.textContent = isPaused ? "▶️" : "⏸️";
+      };
     } else if (element.tagName === "VIDEO") {
-        playPause.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (element.paused) {
-                element.play();
-                playPause.textContent = "⏸️";
-            } else {
-                element.pause();
-                playPause.textContent = "▶️";
-            }
-        };
+      playPause.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (element.paused) {
+          element.play();
+          playPause.textContent = "⏸️";
+        } else {
+          element.pause();
+          playPause.textContent = "▶️";
+        }
+      };
     }
 
     controls.appendChild(playPause);
     element.parentNode.insertBefore(wrapper, element);
     wrapper.appendChild(element);
     wrapper.appendChild(controls);
-};
+  };
+
   const observeDocument = () => {
     log("Starting document observation", "info");
     const startTime = performance.now();
