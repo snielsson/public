@@ -4,7 +4,7 @@
 
 If the `violent monkey` browser extension is installed, the `install script` links can be used to install from this repo.
 
-> [!info] Note that these script may change without any notice so use at own risk.
+> [!CAUTION] Note that these script may change without any notice so use at own risk.
 
 ### AllSites.js ([install Script](https://raw.githubusercontent.com/snielsson/public/BrowserUserScripts/AllSites.user.js))
 
