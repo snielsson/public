@@ -4,8 +4,8 @@
 
 If the `violent monkey` browser extension is installed, the `install script` links can be used to install from this repo.
 
-> [!CAUTION] Scripts in this repo are WIP may update without notice.
-> Note that these script may change without any notice so use at own risk.
+> [!CAUTION] 
+> Scripts in this repo are WIP may update without notice.
 
 ### AllSites.js ([install Script](https://raw.githubusercontent.com/snielsson/public/BrowserUserScripts/AllSites.user.js))
 
