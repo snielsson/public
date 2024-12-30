@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       *://*/*
 // @grant       none
-// @version     1.0.2+2024-12-30-140900
+// @version     1.0.3+2024-12-30
 // @author      Stig Schmidt Nielsson
 // @description Stig's user scripts for all sites.
 // @description Features:
