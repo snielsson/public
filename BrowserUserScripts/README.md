@@ -7,7 +7,8 @@ If the `violent monkey` browser extension is installed, the `install script` lin
 > [!CAUTION] 
 > Scripts in this repo are WIP may update without notice.
 
-### AllSites.js ([install Script](https://raw.githubusercontent.com/snielsson/public/BrowserUserScripts/AllSites.user.js))
+
+  ### AllSites.js ([install Script](https://github.com/snielsson/public/raw/refs/heads/main/BrowserUserScripts/AllSites.user.js))
 
 This scripts runs on all webpages and has the followig features:
 
