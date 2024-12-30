@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       *://*/*
 // @grant       none
-// @version     1.0.0+2024-12-30-140033
+// @version     1.0.1+2024-12-30-132107
 // @author      Stig Schmidt Nielsson
 // @description Stig's user scripts for all sites.
 // @description Features:
@@ -83,6 +83,11 @@
   };
 
   const addControls = (element) => {
+    // Skip if controls already added
+    if (element.parentNode?.classList?.contains('media-controls-wrapper')) {
+      return;
+    }
+
     log('Adding controls to element', 'debug', {
       type: element.nodeName,
       src: element.src,
@@ -90,6 +95,7 @@
     });
 
     const wrapper = document.createElement("div");
+    wrapper.classList.add('media-controls-wrapper');
     wrapper.style.position = "relative";
     wrapper.style.display = "inline-block";
 
