@@ -34,54 +34,74 @@
 
   const MIN_SIZE = 50;
   
-  const isAnimatedImage = async (url) => {
+  const isAnimatedImage = async (element) => {
     try {
-      log('Checking if image is animated', 'debug', url);
-      const response = await fetch(url);
+      const absoluteUrl = new URL(element.src, window.location.origin).href;
+      log('Checking if image is animated', 'debug', absoluteUrl);
+      const response = await fetch(absoluteUrl);
       const buffer = await response.arrayBuffer();
       const view = new Uint8Array(buffer);
       
-      if (url.toLowerCase().endsWith('.gif')) {
-        // Check for GIF87a or GIF89a header
+      if (absoluteUrl.toLowerCase().endsWith('.gif')) {
         if (view[0] !== 0x47 || view[1] !== 0x49 || view[2] !== 0x46) {
-          log('Not a GIF file', 'debug', url);
           return false;
         }
-        
-        // Look for animation blocks
         for (let i = 0; i < view.length - 3; i++) {
           if (view[i] === 0x21 && view[i + 1] === 0xf9 && view[i + 2] === 0x04) {
-            log('Animated GIF detected', 'debug', url);
             return true;
           }
         }
-      } else if (url.toLowerCase().endsWith('.webp')) {
-        // Check for WEBP header
-        const webpHeader = [0x57, 0x45, 0x42, 0x50]; // "WEBP"
+      } else if (absoluteUrl.toLowerCase().endsWith('.webp')) {
+        const webpHeader = [0x57, 0x45, 0x42, 0x50];
         if (!webpHeader.every((byte, i) => view[i + 8] === byte)) {
-          log('Not a WebP file', 'debug', url);
           return false;
         }
-        
-        // Check for animation chunk
-        const animated = view.slice(0, view.length - 8).findIndex((byte, i, arr) => {
-          return byte === 0x41 && // 'A'
-                 arr[i + 1] === 0x4E && // 'N'
-                 arr[i + 2] === 0x49 && // 'I'
-                 arr[i + 3] === 0x4D; // 'M'
+        return view.slice(0, view.length - 8).findIndex((byte, i, arr) => {
+          return byte === 0x41 && arr[i + 1] === 0x4E && 
+                 arr[i + 2] === 0x49 && arr[i + 3] === 0x4D;
         }) !== -1;
-        
-        log(animated ? 'Animated WebP detected' : 'Static WebP detected', 'debug', url);
-        return animated;
       }
-      
       return false;
     } catch (error) {
-      log('Error checking image animation', 'error', { url, error: error.message });
+      log('Error checking image animation', 'error', { url: element.src, error: error.message });
       return false;
     }
   };
-
+  
+  const handleMedia = async (element) => {
+    const checkSize = () => {
+      return element.width >= MIN_SIZE && element.height >= MIN_SIZE;
+    };
+  
+    try {
+      if (element.nodeName === "IMG" &&
+          (element.src.toLowerCase().endsWith(".gif") || 
+           element.src.toLowerCase().endsWith(".webp"))) {
+        
+        if (!element.complete) {
+          await new Promise(resolve => element.onload = resolve);
+        }
+        
+        if (checkSize() && await isAnimatedImage(element)) {
+          addControls(element);
+        }
+      } else if (element.nodeName === "VIDEO" && !element.hasAttribute("controls")) {
+        if (!element.videoWidth) {
+          await new Promise(resolve => element.onloadedmetadata = resolve);
+        }
+        if (element.videoWidth >= MIN_SIZE && element.videoHeight >= MIN_SIZE) {
+          addControls(element);
+        }
+      }
+    } catch (error) {
+      log('Error processing media element', 'error', {
+        type: element.nodeName,
+        src: element.src,
+        error: error.message
+      });
+    }
+  }; 
+  
   const addControls = (element) => {
     // Skip if controls already added
     if (element.parentNode?.classList?.contains('media-controls-wrapper')) {
@@ -136,50 +156,6 @@
       type: element.nodeName,
       src: element.src
     });
-  };
-
-  const handleMedia = async (element) => {
-    const startTime = performance.now();
-    log('Processing media element', 'debug', {
-      type: element.nodeName,
-      src: element.src,
-      dimensions: `${element.width}x${element.height}`
-    });
-
-    try {
-      if (
-        element.nodeName === "IMG" &&
-        (element.src.toLowerCase().endsWith(".gif") || element.src.toLowerCase().endsWith(".webp"))
-      ) {
-        if (
-          (await isAnimatedImage(element.src)) &&
-          element.width >= MIN_SIZE &&
-          element.height >= MIN_SIZE
-        ) {
-          addControls(element);
-        }
-      } else if (
-        element.nodeName === "VIDEO" &&
-        !element.hasAttribute("controls") &&
-        element.videoWidth >= MIN_SIZE &&
-        element.videoHeight >= MIN_SIZE
-      ) {
-        addControls(element);
-      }
-
-      const processingTime = performance.now() - startTime;
-      log('Media processing completed', 'debug', {
-        type: element.nodeName,
-        src: element.src,
-        processingTime: `${processingTime.toFixed(2)}ms`
-      });
-    } catch (error) {
-      log('Error processing media element', 'error', {
-        type: element.nodeName,
-        src: element.src,
-        error: error.message
-      });
-    }
   };
 
   const observeDocument = () => {
