@@ -5,100 +5,122 @@
 // @grant       none
 // @version     1.0.6+2024-12-30-140900
 // @author      Stig Schmidt Nielsson
-// @require     https://raw.githubusercontent.com/snielsson/public/BrowserUserScripts/freezeframe.5.0.2.min.js
+// @require     freezeframe.5.0.2.min.js
 // @description Stig's user scripts for all sites.
 // @description Features:
-// @description UI controls add to pause gifs and webp. Uses FreezeFrame 5.0.2.
+// @description Adds pause/play controls to animated GIFs, WebP images and videos
 // ==/UserScript==
 
-(function() {
+(function () {
   "use strict";
-  
-  const log = (message, level = 'info', data = null) => {
-    const timestamp = new Date().toISOString();
-    const prefix = `[AllSites ${timestamp}]`;
-    switch (level.toLowerCase()) {
-      case 'error': console.error(prefix, message, data || ''); break;
-      case 'warn': console.warn(prefix, message, data || ''); break;
-      case 'debug': console.debug(prefix, message, data || ''); break;
-      default: console.info(prefix, message, data || '');
-    }
-  };
 
-  const handleMedia = (element) => {
-    try {
-      if (!element.classList.contains('freezeframe-processed')) {
-        log('Processing media element', 'debug', {
-          type: element.nodeName,
-          src: element.src
-        });
-
-        element.classList.add('freezeframe-processed');
-        new Freezeframe(element, {
-          trigger: 'click',
-          overlay: true
-        });
-
-        log('Added Freezeframe controls', 'info', {
-          type: element.nodeName,
-          src: element.src
-        });
+  // Styles for the pause button
+  const styles = `
+      .pause-overlay {
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          background: rgba(0, 0, 0, 0.6);
+          color: white;
+          padding: 5px 10px;
+          border-radius: 4px;
+          cursor: pointer;
+          z-index: 9999;
+          font-size: 12px;
+          user-select: none;
       }
-    } catch (error) {
-      log('Error processing media element', 'error', {
-        type: element.nodeName,
-        src: element.src,
-        error: error.message
-      });
-    }
-  };
+      .media-wrapper {
+          position: relative;
+          display: inline-block;
+      }
+  `;
 
-  const observeDocument = () => {
-    log('Starting document observation', 'info');
-    const startTime = performance.now();
+  // Add styles to document
+  const styleSheet = document.createElement("style");
+  styleSheet.textContent = styles;
+  document.head.appendChild(styleSheet);
 
-    document.querySelectorAll('img[src$=".gif"], img[src$=".webp"]').forEach(handleMedia);
-    
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeName === "IMG" && 
-              (node.src?.endsWith(".gif") || node.src?.endsWith(".webp"))) {
-            handleMedia(node);
-          }
-          if (node.querySelectorAll) {
-            node.querySelectorAll('img[src$=".gif"], img[src$=".webp"]')
-                .forEach(handleMedia);
-          }
-        });
-      });
+  // Track paused state for each media element
+  const pausedStates = new WeakMap();
+
+  // Create pause button for an element
+  function createPauseButton(mediaElement, isVideo = false) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "media-wrapper";
+
+    const pauseBtn = document.createElement("div");
+    pauseBtn.className = "pause-overlay";
+    pauseBtn.textContent = "Pause";
+
+    // Set initial state
+    pausedStates.set(mediaElement, false);
+
+    // Handle click events
+    pauseBtn.addEventListener("click", () => {
+      const isPaused = pausedStates.get(mediaElement);
+
+      if (isVideo) {
+        if (isPaused) {
+          mediaElement.play();
+        } else {
+          mediaElement.pause();
+        }
+      } else {
+        // For GIF/WebP, use framefreeze
+        if (isPaused) {
+          framefreeze.unfreeze(mediaElement);
+        } else {
+          framefreeze.freeze(mediaElement);
+        }
+      }
+      pausedStates.set(mediaElement, !isPaused);
+      pauseBtn.textContent = isPaused ? "Pause" : "Play";
     });
 
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-    });
-
-    const initTime = performance.now() - startTime;
-    log('Document observation initialized', 'info', {
-      setupTime: `${initTime.toFixed(2)}ms`
-    });
-  };
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", observeDocument);
-  } else {
-    observeDocument();
+    // Insert elements into DOM
+    mediaElement.parentNode.insertBefore(wrapper, mediaElement);
+    wrapper.appendChild(mediaElement);
+    wrapper.appendChild(pauseBtn);
   }
-})();
-    });
-  };
 
-  if (document.readyState === "loading") {
-    log('Document loading, waiting for DOMContentLoaded', 'info');
-    document.addEventListener("DOMContentLoaded", observeDocument);
-  } else {
-    log('Document already loaded, starting immediately', 'info');
-    observeDocument();
+  // Process all media elements on the page
+  function processMediaElements() {
+    // Handle videos
+    document.querySelectorAll("video").forEach((video) => {
+      if (!video.parentNode.classList.contains("media-wrapper")) {
+        createPauseButton(video, true);
+      }
+    });
+
+    // Handle GIFs and animated WebPs
+    document.querySelectorAll("img").forEach((img) => {
+      if (!img.parentNode.classList.contains("media-wrapper")) {
+        const isAnimated =
+          img.src.toLowerCase().endsWith(".gif") ||
+          (img.src.toLowerCase().endsWith(".webp") &&
+            framefreeze.isAnimated(img));
+
+        if (isAnimated) {
+          createPauseButton(img, false);
+        }
+      }
+    });
   }
+
+  // Process existing media elements
+  processMediaElements();
+
+  // Watch for new media elements being added to the page
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.addedNodes.length) {
+        processMediaElements();
+      }
+    });
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
 })();
