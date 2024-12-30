@@ -120,11 +120,10 @@
   };
 
   const addControls = (element) => {
-    if (element.parentNode?.classList?.contains("media-controls-wrapper"))
-      return;
+    if (element.parentNode?.classList?.contains('media-controls-wrapper')) return;
 
     const wrapper = document.createElement("div");
-    wrapper.classList.add("media-controls-wrapper");
+    wrapper.classList.add('media-controls-wrapper');
     wrapper.style.position = "relative";
     wrapper.style.display = "inline-block";
 
@@ -136,43 +135,45 @@
         right: 0;
         background: rgba(0,0,0,0.5);
         padding: 5px;
+        display: block;  /* Always show controls */
+        z-index: 1000;
     `;
 
     const playPause = document.createElement("button");
     playPause.textContent = "⏸️";
     playPause.style.cursor = "pointer";
-    playPause.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (element.tagName === "IMG") {
-        element.style.animationPlayState =
-          element.style.animationPlayState === "paused" ? "running" : "paused";
-        playPause.textContent =
-          element.style.animationPlayState === "paused" ? "▶️" : "⏸️";
-      } else {
-        if (element.paused) {
-          element.play();
-          playPause.textContent = "⏸️";
-        } else {
-          element.pause();
-          playPause.textContent = "▶️";
-        }
-      }
-    };
+    
+    // For animated images (GIF/WebP)
+    if (element.tagName === "IMG") {
+        let isPaused = false;
+        element.style.animationPlayState = 'running';
+        
+        playPause.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            isPaused = !isPaused;
+            element.style.animationPlayState = isPaused ? 'paused' : 'running';
+            playPause.textContent = isPaused ? "▶️" : "⏸️";
+        };
+    } else if (element.tagName === "VIDEO") {
+        playPause.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (element.paused) {
+                element.play();
+                playPause.textContent = "⏸️";
+            } else {
+                element.pause();
+                playPause.textContent = "▶️";
+            }
+        };
+    }
 
     controls.appendChild(playPause);
     element.parentNode.insertBefore(wrapper, element);
     wrapper.appendChild(element);
     wrapper.appendChild(controls);
-
-    // For animated GIFs/WebPs, set initial CSS animation state
-    if (element.tagName === "IMG") {
-      element.style.animation = "none";
-      element.offsetHeight; // Trigger reflow
-      element.style.animation = null;
-    }
-  };
-
+};
   const observeDocument = () => {
     log("Starting document observation", "info");
     const startTime = performance.now();
