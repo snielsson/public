@@ -3,17 +3,16 @@
 // @namespace   Violentmonkey Scripts
 // @match       *://*/*
 // @grant       none
-// @version     1.0.0+2024-12-30-132107
+// @version     1.0.0+2024-12-30-140033
 // @author      Stig Schmidt Nielsson
 // @description Stig's user scripts for all sites.
 // @description Features:
-// @description UI controls add to animated gifs to control playback.
+// @description UI controls add to animated gifs and webp to control playback.
 // ==/UserScript==
 
 (function () {
   "use strict";
 
-  // Logging utility
   const log = (message, level = 'info', data = null) => {
     const timestamp = new Date().toISOString();
     const prefix = `[AllSites ${timestamp}]`;
@@ -35,31 +34,50 @@
 
   const MIN_SIZE = 50;
   
-  const isAnimatedGif = async (url) => {
+  const isAnimatedImage = async (url) => {
     try {
-      log('Checking if GIF is animated', 'debug', url);
+      log('Checking if image is animated', 'debug', url);
       const response = await fetch(url);
       const buffer = await response.arrayBuffer();
       const view = new Uint8Array(buffer);
       
-      // Check for GIF87a or GIF89a header
-      if (view[0] !== 0x47 || view[1] !== 0x49 || view[2] !== 0x46) {
-        log('Not a GIF file', 'debug', url);
-        return false;
-      }
-      
-      // Look for animation blocks
-      for (let i = 0; i < view.length - 3; i++) {
-        if (view[i] === 0x21 && view[i + 1] === 0xf9 && view[i + 2] === 0x04) {
-          log('Animated GIF detected', 'debug', url);
-          return true;
+      if (url.toLowerCase().endsWith('.gif')) {
+        // Check for GIF87a or GIF89a header
+        if (view[0] !== 0x47 || view[1] !== 0x49 || view[2] !== 0x46) {
+          log('Not a GIF file', 'debug', url);
+          return false;
         }
+        
+        // Look for animation blocks
+        for (let i = 0; i < view.length - 3; i++) {
+          if (view[i] === 0x21 && view[i + 1] === 0xf9 && view[i + 2] === 0x04) {
+            log('Animated GIF detected', 'debug', url);
+            return true;
+          }
+        }
+      } else if (url.toLowerCase().endsWith('.webp')) {
+        // Check for WEBP header
+        const webpHeader = [0x57, 0x45, 0x42, 0x50]; // "WEBP"
+        if (!webpHeader.every((byte, i) => view[i + 8] === byte)) {
+          log('Not a WebP file', 'debug', url);
+          return false;
+        }
+        
+        // Check for animation chunk
+        const animated = view.slice(0, view.length - 8).findIndex((byte, i, arr) => {
+          return byte === 0x41 && // 'A'
+                 arr[i + 1] === 0x4E && // 'N'
+                 arr[i + 2] === 0x49 && // 'I'
+                 arr[i + 3] === 0x4D; // 'M'
+        }) !== -1;
+        
+        log(animated ? 'Animated WebP detected' : 'Static WebP detected', 'debug', url);
+        return animated;
       }
       
-      log('Static GIF detected', 'debug', url);
       return false;
     } catch (error) {
-      log('Error checking GIF animation', 'error', { url, error: error.message });
+      log('Error checking image animation', 'error', { url, error: error.message });
       return false;
     }
   };
@@ -105,14 +123,8 @@
     wrapper.appendChild(element);
     wrapper.appendChild(controls);
 
-    wrapper.addEventListener(
-      "mouseenter",
-      () => (controls.style.display = "block")
-    );
-    wrapper.addEventListener(
-      "mouseleave",
-      () => (controls.style.display = "none")
-    );
+    wrapper.addEventListener("mouseenter", () => (controls.style.display = "block"));
+    wrapper.addEventListener("mouseleave", () => (controls.style.display = "none"));
 
     log('Controls added successfully', 'info', {
       type: element.nodeName,
@@ -131,10 +143,10 @@
     try {
       if (
         element.nodeName === "IMG" &&
-        element.src.toLowerCase().endsWith(".gif")
+        (element.src.toLowerCase().endsWith(".gif") || element.src.toLowerCase().endsWith(".webp"))
       ) {
         if (
-          (await isAnimatedGif(element.src)) &&
+          (await isAnimatedImage(element.src)) &&
           element.width >= MIN_SIZE &&
           element.height >= MIN_SIZE
         ) {
@@ -168,20 +180,20 @@
     log('Starting document observation', 'info');
     const startTime = performance.now();
 
-    document.querySelectorAll('img[src$=".gif"], video').forEach(handleMedia);
+    document.querySelectorAll('img[src$=".gif"], img[src$=".webp"], video').forEach(handleMedia);
     
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
           if (
-            (node.nodeName === "IMG" && node.src?.endsWith(".gif")) ||
+            (node.nodeName === "IMG" && (node.src?.endsWith(".gif") || node.src?.endsWith(".webp"))) ||
             node.nodeName === "VIDEO"
           ) {
             handleMedia(node);
           }
           if (node.querySelectorAll) {
             node
-              .querySelectorAll('img[src$=".gif"], video')
+              .querySelectorAll('img[src$=".gif"], img[src$=".webp"], video')
               .forEach(handleMedia);
           }
         });
